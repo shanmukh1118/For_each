@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:compatibility="http://www.mulesoft.org/schema/mule/compatibility" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd http://www.mulesoft.org/schema/mule/compatibility http://www.mulesoft.org/schema/mule/compatibility/current/mule-compatibility.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+    <http:listener-config name="HTTP_Listener_Configuration" doc:name="HTTP Listener Configuration">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+
+    <db:config name="MySQL_Configuration" doc:name="MySQL Configuration">
+        <db:my-sql-connection database="training" host="mudb.learn.mulesoft.com" port="3306" user="mule" password="mule">
+            <!--Migration ERROR: Add a suitable JDBC driver dependency for this connection.-->
+            <!--    For more information refer to:-->
+            <!--        * https://docs.mulesoft.com/db-connector/1.8/database-connector-examples#configure-a-database-connection-->
+            <reconnection failsDeployment="true" />
+        </db:my-sql-connection>
+    </db:config>
+
+    <file:config name="File" doc:name="File">
+        <file:connection workingDir=".">
+            <reconnection failsDeployment="true" />
+        </file:connection>
+    </file:config>
+
+    <flow name="for_each_mule3Flow">
+        <scheduler doc:name="Poll">
+            <scheduling-strategy>
+                <fixed-frequency frequency="100" startDelay="1" timeUnit="SECONDS" />
+            </scheduling-strategy>
+        </scheduler>
+
+        <logger message="schedulerProcessStart" level="INFO" doc:name="Logger" />
+
+        <compatibility:outbound-properties-to-var>
+            <!--Migration WARN: Instead of using outbound properties in the flow, move the expression that sets the property into the XML attribute (such as 'method') of the operation or listener that accepts the expression.-->
+            <!--    For more information refer to:-->
+            <!--        * https://github.com/mulesoft/mule-migration-assistant/blob/master/docs/user-docs/migration-tool-post-mig.adoc#outbound_properties-->
+        </compatibility:outbound-properties-to-var>
+
+        <db:select config-ref="MySQL_Configuration" doc:name="Database">
+            <!--Migration INFO: Streaming is enabled by default in Mule 4-->
+            <!--    For more information refer to:-->
+            <!--        * https://docs.mulesoft.com/mule-runtime/4.3/migration-connectors-database#database_streaming-->
+            <db:sql>select * from accounts</db:sql>
+        </db:select>
+
+        <foreach doc:name="For Each">
+            <logger message="#[&quot;Hello $(mel:payload.get('name')), $(mel:payload.get('postal'))&quot;]" level="INFO" doc:name="Logger">
+                <!--Migration WARN: The MEL expression could not be migrated to a DataWeave expression.-->
+                <!--    For more information refer to:-->
+                <!--        * https://docs.mulesoft.com/mule-runtime/4.3/migration-mel-->
+                <!--        * https://github.com/mulesoft/mule-migration-assistant/blob/master/docs/user-docs/migration-tool-post-mig.adoc#mel_expressions-->
+                <!--        * https://blogs.mulesoft.com/dev/mule-dev/why-dataweave-main-expression-language-mule-4-->
+                <!--Migration WARN: The MEL expression contains a method invocation that could not be migrated to a Dataweave expression.-->
+                <!--    For more information refer to:-->
+                <!--        * https://docs.mulesoft.com/mule-runtime/4.3/dataweave-cookbook-java-methods-->
+                <!--        * https://docs.mulesoft.com/mule-runtime/4.3/migration-mel-->
+            </logger>
+        </foreach>
+
+        <ee:transform doc:name="Object to JSON">
+            <ee:message>
+                <ee:set-payload>%dw 2.0 output application/json --- payload</ee:set-payload>
+            </ee:message>
+        </ee:transform>
+
+        <compatibility:outbound-properties-to-var>
+            <!--Migration WARN: Instead of using outbound properties in the flow, move the expression that sets the property into the XML attribute (such as 'method') of the operation or listener that accepts the expression.-->
+            <!--    For more information refer to:-->
+            <!--        * https://github.com/mulesoft/mule-migration-assistant/blob/master/docs/user-docs/migration-tool-post-mig.adoc#outbound_properties-->
+        </compatibility:outbound-properties-to-var>
+
+        <file:write path="#[migration::FileWriteOutputFile::fileWriteOutputfile(vars, { writeToDirectory: 'C:\Users\nanallam\OneDrive - Capgemini\Desktop\Nani\3', address: null, outputPattern: 'test.csv', outputPatternConfig: 'text.csv'})]" config-ref="File" responseTimeout="10000" doc:name="File" />
+
+        <compatibility:attributes-to-inbound-properties>
+            <!--Migration WARN: Expressions that query 'inboundProperties' from the message should instead query the message 'attributes'. Remove this component if there are no uses of 'inboundProperties' in expressions or components that rely on 'inboundProperties' (such as 'copy-properties').-->
+            <!--    For more information refer to:-->
+            <!--        * https://docs.mulesoft.com/mule-runtime/4.3/intro-mule-message#inbound-properties-are-now-attributes-->
+            <!--        * https://github.com/mulesoft/mule-migration-assistant/blob/master/docs/user-docs/migration-tool-post-mig.adoc#inbound_properties-->
+        </compatibility:attributes-to-inbound-properties>
+
+    </flow>
+
+</mule>
